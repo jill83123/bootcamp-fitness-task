@@ -5,5 +5,5 @@ module.exports = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
   synchronize: process.env.DB_SYNCHRONIZE === 'true',
-  ssl: process.env.DB_ENABLE_SSL === 'true' ? { rejectUnauthorized: false } : false
-}
+  ssl: process.env.DB_ENABLE_SSL === 'true' ? { rejectUnauthorized: false } : false,
+};
