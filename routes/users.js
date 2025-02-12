@@ -5,6 +5,7 @@ const { dataSource } = require('../db/data-source');
 const logger = require('../utils/logger')('User');
 const { isValidString } = require('../utils/valueChecks');
 const generateJWT = require('../utils/generateJWT');
+const generateError = require('../utils/generateError');
 
 const isValidEmail = (value) => {
   const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -16,40 +17,33 @@ const isValidPassword = (value) => {
   return passwordPattern.test(value);
 };
 
+const failedMessageMap = {
+  emailFormat: 'Email 格式不正確',
+  passwordRules: '密碼不符合規則，需要包含英文數字大小寫，最短 8 個字，最長 16 個字',
+};
+
 router.post('/signup', async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
 
     if (!isValidString(name) || !isValidString(email) || !isValidString(password)) {
-      res.status(400).send({
-        status: 'failed',
-        message: '欄位未填寫正確',
-      });
+      next(generateError(400, '欄位未填寫正確'));
       return;
     }
 
     const namePattern = /^[\p{Script=Han}a-zA-Z]{2,10}$/u;
     if (!namePattern.test(name)) {
-      res.status(400).send({
-        status: 'failed',
-        message: '使用者名稱不符合規則，最少 2 個字，最多 10 個字，不可包含任何特殊符號與空白',
-      });
+      next(generateError(400, '使用者名稱最少 2 個字，最多 10 個字，不可包含任何特殊符號與空白'));
       return;
     }
 
     if (!isValidEmail(email)) {
-      res.status(400).send({
-        status: 'failed',
-        message: 'Email 格式不正確',
-      });
+      next(generateError(400, failedMessageMap.emailFormat));
       return;
     }
 
     if (!isValidPassword(password)) {
-      res.status(400).send({
-        status: 'failed',
-        message: '密碼不符合規則，需要包含英文數字大小寫，最短 8 個字，最長 16 個字',
-      });
+      next(generateError(400, failedMessageMap.passwordRules));
       return;
     }
 
@@ -57,10 +51,7 @@ router.post('/signup', async (req, res, next) => {
 
     const existingEmail = await userRepo.findOne({ where: { email } });
     if (existingEmail) {
-      res.status(409).send({
-        status: 'failed',
-        message: 'Email 已被使用',
-      });
+      next(generateError(409, 'Email 已被使用'));
       return;
     }
 
@@ -88,26 +79,17 @@ router.post('/login', async (req, res, next) => {
     const { email, password } = req.body;
 
     if (!isValidString(email) || !isValidString(password)) {
-      res.status(400).send({
-        status: 'failed',
-        message: '欄位未填寫正確',
-      });
+      next(generateError(400, '欄位未填寫正確'));
       return;
     }
 
     if (!isValidEmail(email)) {
-      res.status(400).send({
-        status: 'failed',
-        message: 'Email 格式不正確',
-      });
+      next(generateError(400, failedMessageMap.emailFormat));
       return;
     }
 
     if (!isValidPassword(password)) {
-      res.status(400).send({
-        status: 'failed',
-        message: '密碼不符合規則，需要包含英文數字大小寫，最短 8 個字，最長 16 個字',
-      });
+      next(generateError(400, failedMessageMap.passwordRules));
       return;
     }
 
@@ -116,26 +98,14 @@ router.post('/login', async (req, res, next) => {
       select: ['id', 'name', 'role', 'password'],
       where: { email },
     });
-    if (!existingUser) {
-      res.status(400).send({
-        status: 'failed',
-        message: '使用者不存在或密碼輸入錯誤',
-      });
-      return;
-    }
-
-    const isCorrectPassword = await bcrypt.compare(password, existingUser.password);
-    if (!isCorrectPassword) {
-      res.status(400).send({
-        status: 'failed',
-        message: '使用者不存在或密碼輸入錯誤',
-      });
+    if (!existingUser || !(await bcrypt.compare(password, existingUser.password))) {
+      next(generateError(400, '使用者不存在或密碼輸入錯誤'));
       return;
     }
 
     const token = await generateJWT({ id: existingUser.id, role: existingUser.role });
 
-    res.status(201).send({
+    res.status(200).send({
       status: 'success',
       data: {
         token,

@@ -3,6 +3,7 @@ const router = express.Router();
 const { dataSource } = require('../db/data-source');
 const logger = require('../utils/logger')('CreditPackage');
 const { isValidString, isNaturalNumber, isUUID } = require('../utils/valueChecks');
+const generateError = require('../utils/generateError');
 
 router.get('/', async (req, res, next) => {
   try {
@@ -26,10 +27,7 @@ router.post('/', async (req, res, next) => {
     const { name, credit_amount, price } = req.body;
 
     if (!isValidString(name) || !isNaturalNumber(credit_amount) || !isNaturalNumber(price)) {
-      res.status(400).send({
-        status: 'failed',
-        message: '欄位未填寫正確',
-      });
+      next(generateError(400, '欄位未填寫正確'));
       return;
     }
 
@@ -37,10 +35,7 @@ router.post('/', async (req, res, next) => {
 
     const existingCreditPackage = await creditPackageRepo.findOne({ where: { name } });
     if (existingCreditPackage) {
-      res.status(409).send({
-        status: 'failed',
-        message: '資料重複',
-      });
+      next(generateError(409, '資料重複'));
       return;
     }
 
@@ -64,10 +59,7 @@ router.delete('/:creditPackageId', async (req, res, next) => {
     const { creditPackageId } = req.params;
 
     if (!isValidString(creditPackageId) || !isUUID(creditPackageId)) {
-      res.status(400).send({
-        status: 'failed',
-        message: 'id 錯誤',
-      });
+      next(generateError(400, 'id 錯誤'));
       return;
     }
 
@@ -75,10 +67,7 @@ router.delete('/:creditPackageId', async (req, res, next) => {
     const result = await creditPackageRepo.delete(creditPackageId);
 
     if (result.affected === 0) {
-      res.status(400).send({
-        status: 'failed',
-        message: 'id 不存在',
-      });
+      next(generateError(400, 'id 不存在'));
       return;
     }
 

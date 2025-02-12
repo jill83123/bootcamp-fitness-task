@@ -39,7 +39,16 @@ app.use('/api/coaches', coachesRouter);
 
 app.use((err, req, res, next) => {
   req.log.error(err);
-  res.status(500).json({
+
+  if (err.isOperational) {
+    res.status(err.statusCode).send({
+      status: 'failed',
+      message: err.message,
+    });
+    return;
+  }
+
+  res.status(500).send({
     status: 'error',
     message: '伺服器錯誤',
   });

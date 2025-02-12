@@ -3,6 +3,7 @@ const router = express.Router();
 const { dataSource } = require('../db/data-source');
 const logger = require('../utils/logger')('Skill');
 const { isValidString, isUUID } = require('../utils/valueChecks');
+const generateError = require('../utils/generateError');
 
 router.get('/', async (req, res, next) => {
   try {
@@ -24,10 +25,7 @@ router.post('/', async (req, res, next) => {
     const { name } = req.body;
 
     if (!isValidString(name)) {
-      res.status(400).send({
-        status: 'failed',
-        message: '欄位未填寫正確',
-      });
+      next(generateError(400, '欄位未填寫正確'));
       return;
     }
 
@@ -35,10 +33,7 @@ router.post('/', async (req, res, next) => {
 
     const existingSkill = await skillRepo.findOne({ where: { name } });
     if (existingSkill) {
-      res.status(409).send({
-        status: 'failed',
-        message: '資料重複',
-      });
+      next(generateError(409, '資料重複'));
       return;
     }
 
@@ -60,10 +55,7 @@ router.delete('/:skillId', async (req, res, next) => {
     const { skillId } = req.params;
 
     if (!isValidString(skillId) || !isUUID(skillId)) {
-      res.status(400).send({
-        status: 'failed',
-        message: 'id 錯誤',
-      });
+      next(generateError(400, 'id 錯誤'));
       return;
     }
 
@@ -71,10 +63,7 @@ router.delete('/:skillId', async (req, res, next) => {
     const result = await skillRepo.delete(skillId);
 
     if (result.affected === 0) {
-      res.status(400).send({
-        status: 'failed',
-        message: 'id 不存在',
-      });
+      next(generateError(400, 'id 不存在'));
       return;
     }
 
