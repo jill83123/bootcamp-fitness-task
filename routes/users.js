@@ -4,14 +4,21 @@ const bcrypt = require('bcrypt');
 const { dataSource } = require('../db/data-source');
 const logger = require('../utils/logger')('User');
 const { isValidString } = require('../utils/valueChecks');
+const generateJWT = require('../utils/generateJWT');
+
+const isValidEmail = (value) => {
+  const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailPattern.test(value);
+};
+
+const isValidPassword = (value) => {
+  const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,16}$/;
+  return passwordPattern.test(value);
+};
 
 router.post('/signup', async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
-
-    const namePattern = /^[\p{Script=Han}a-zA-Z]{2,10}$/u;
-    const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,16}$/;
 
     if (!isValidString(name) || !isValidString(email) || !isValidString(password)) {
       res.status(400).send({
@@ -21,6 +28,7 @@ router.post('/signup', async (req, res, next) => {
       return;
     }
 
+    const namePattern = /^[\p{Script=Han}a-zA-Z]{2,10}$/u;
     if (!namePattern.test(name)) {
       res.status(400).send({
         status: 'failed',
@@ -29,7 +37,7 @@ router.post('/signup', async (req, res, next) => {
       return;
     }
 
-    if (!emailPattern.test(email)) {
+    if (!isValidEmail(email)) {
       res.status(400).send({
         status: 'failed',
         message: 'Email 格式不正確',
@@ -37,7 +45,7 @@ router.post('/signup', async (req, res, next) => {
       return;
     }
 
-    if (!passwordPattern.test(password)) {
+    if (!isValidPassword(password)) {
       res.status(400).send({
         status: 'failed',
         message: '密碼不符合規則，需要包含英文數字大小寫，最短 8 個字，最長 16 個字',
@@ -66,6 +74,73 @@ router.post('/signup', async (req, res, next) => {
         user: {
           id: savedUser.id,
           name: savedUser.name,
+        },
+      },
+    });
+  } catch (error) {
+    logger.error(error);
+    next(error);
+  }
+});
+
+router.post('/login', async (req, res, next) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!isValidString(email) || !isValidString(password)) {
+      res.status(400).send({
+        status: 'failed',
+        message: '欄位未填寫正確',
+      });
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      res.status(400).send({
+        status: 'failed',
+        message: 'Email 格式不正確',
+      });
+      return;
+    }
+
+    if (!isValidPassword(password)) {
+      res.status(400).send({
+        status: 'failed',
+        message: '密碼不符合規則，需要包含英文數字大小寫，最短 8 個字，最長 16 個字',
+      });
+      return;
+    }
+
+    const userRepo = dataSource.getRepository('User');
+    const existingUser = await userRepo.findOne({
+      select: ['id', 'name', 'role', 'password'],
+      where: { email },
+    });
+    if (!existingUser) {
+      res.status(400).send({
+        status: 'failed',
+        message: '使用者不存在或密碼輸入錯誤',
+      });
+      return;
+    }
+
+    const isCorrectPassword = await bcrypt.compare(password, existingUser.password);
+    if (!isCorrectPassword) {
+      res.status(400).send({
+        status: 'failed',
+        message: '使用者不存在或密碼輸入錯誤',
+      });
+      return;
+    }
+
+    const token = await generateJWT({ id: existingUser.id, role: existingUser.role });
+
+    res.status(201).send({
+      status: 'success',
+      data: {
+        token,
+        user: {
+          name: existingUser.name,
         },
       },
     });
