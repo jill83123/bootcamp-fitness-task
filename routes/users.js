@@ -1,11 +1,17 @@
 const express = require('express');
 const router = express.Router();
+const auth = require('../middleware/auth');
 const bcrypt = require('bcrypt');
 const { dataSource } = require('../db/data-source');
 const logger = require('../utils/logger')('User');
 const { isValidString } = require('../utils/valueChecks');
 const generateJWT = require('../utils/generateJWT');
 const generateError = require('../utils/generateError');
+
+const isValidUserName = (value) => {
+  const namePattern = /^[\p{Script=Han}a-zA-Z]{2,10}$/u;
+  return namePattern.test(value);
+};
 
 const isValidEmail = (value) => {
   const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -20,6 +26,7 @@ const isValidPassword = (value) => {
 const failedMessageMap = {
   emailFormat: 'Email 格式不正確',
   passwordRules: '密碼不符合規則，需要包含英文數字大小寫，最短 8 個字，最長 16 個字',
+  userNameRules: '使用者名稱不符合規則，最少 2 個字，最多 10 個字，不可包含任何特殊符號與空白',
 };
 
 router.post('/signup', async (req, res, next) => {
@@ -31,9 +38,8 @@ router.post('/signup', async (req, res, next) => {
       return;
     }
 
-    const namePattern = /^[\p{Script=Han}a-zA-Z]{2,10}$/u;
-    if (!namePattern.test(name)) {
-      next(generateError(400, '使用者名稱最少 2 個字，最多 10 個字，不可包含任何特殊符號與空白'));
+    if (!isValidUserName(name)) {
+      next(generateError(400, failedMessageMap.userNameRules));
       return;
     }
 
@@ -113,6 +119,67 @@ router.post('/login', async (req, res, next) => {
           name: existingUser.name,
         },
       },
+    });
+  } catch (error) {
+    logger.error(error);
+    next(error);
+  }
+});
+
+router.get('/profile', auth, async (req, res, next) => {
+  try {
+    const { id: userId } = req.user;
+
+    const userRepo = dataSource.getRepository('User');
+    const user = await userRepo.findOne({
+      select: ['name', 'email'],
+      where: { id: userId },
+    });
+
+    res.status(200).send({
+      status: 'success',
+      data: { user },
+    });
+  } catch (error) {
+    logger.error(error);
+    next(error);
+  }
+});
+
+router.put('/profile', auth, async (req, res, next) => {
+  try {
+    const { name } = req.body;
+    const { id: userId } = req.user;
+
+    if (!isValidString(name)) {
+      next(generateError(400, '欄位未填寫正確'));
+      return;
+    }
+
+    if (!isValidUserName(name)) {
+      next(generateError(400, failedMessageMap.userNameRules));
+      return;
+    }
+
+    const userRepo = dataSource.getRepository('User');
+
+    const user = await userRepo.findOne({ select: ['name'], where: { id: userId } });
+    if (user.name === name) {
+      next(generateError(400, '使用者名稱未變更'));
+      return;
+    }
+
+    const updatedResult = await userRepo.update({ id: userId }, { name });
+    if (updatedResult.affected === 0) {
+      next(generateError(400, '使用者資料更新失敗'));
+      return;
+    }
+
+    const finalResult = await userRepo.findOne({ select: ['name'], where: { id: userId } });
+
+    res.status(200).send({
+      status: 'success',
+      data: { user: finalResult },
     });
   } catch (error) {
     logger.error(error);
