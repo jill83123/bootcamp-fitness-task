@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const auth = require('../middleware/auth');
 const { dataSource } = require('../db/data-source');
 const logger = require('../utils/logger')('CreditPackage');
 const { isValidString, isNaturalNumber, isUUID } = require('../utils/valueChecks');
@@ -73,6 +74,45 @@ router.delete('/:creditPackageId', async (req, res, next) => {
 
     res.status(200).send({
       status: 'success',
+    });
+  } catch (error) {
+    logger.error(error);
+    next(error);
+  }
+});
+
+router.post('/:creditPackageId', auth, async (req, res, next) => {
+  try {
+    const { creditPackageId } = req.params;
+    const { id: userId } = req.user;
+
+    if (!isUUID(creditPackageId)) {
+      next(generateError(400, 'id 錯誤'));
+      return;
+    }
+
+    const creditPackageRepo = dataSource.getRepository('CreditPackage');
+    const existingCreditPackage = await creditPackageRepo.findOne({
+      where: { id: creditPackageId },
+    });
+    if (!existingCreditPackage) {
+      next(generateError(400, 'id 錯誤'));
+      return;
+    }
+
+    const creditPurchaseRepo = dataSource.getRepository('CreditPurchase');
+    const newCreditPurchase = {
+      user_id: userId,
+      credit_package_id: creditPackageId,
+      purchased_credits: existingCreditPackage.credit_amount,
+      price_paid: existingCreditPackage.price,
+      purchase_at: new Date().toISOString(),
+    };
+    await creditPurchaseRepo.save(creditPurchaseRepo.create(newCreditPurchase));
+
+    res.status(200).send({
+      status: 'success',
+      data: null,
     });
   } catch (error) {
     logger.error(error);
