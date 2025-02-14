@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const auth = require('../middleware/auth');
+const isCoach = require('../middleware/isCoach');
 const { dataSource } = require('../db/data-source');
 const logger = require('../utils/logger')('Admin');
 const {
@@ -24,7 +26,7 @@ const isNotValidCourseInput = (course) => {
   );
 };
 
-router.post('/coaches/courses', async (req, res, next) => {
+router.post('/coaches/courses', auth, isCoach, async (req, res, next) => {
   try {
     const {
       user_id,
@@ -87,7 +89,7 @@ router.post('/coaches/courses', async (req, res, next) => {
   }
 });
 
-router.put('/coaches/courses/:courseId', async (req, res, next) => {
+router.put('/coaches/courses/:courseId', auth, isCoach, async (req, res, next) => {
   try {
     const { courseId } = req.params;
     const {
@@ -149,7 +151,7 @@ router.put('/coaches/courses/:courseId', async (req, res, next) => {
   }
 });
 
-router.post('/coaches/:userId', async (req, res, next) => {
+router.post('/coaches/:userId', auth, async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { experience_years, description, profile_image_url = null } = req.body;
