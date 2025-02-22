@@ -1,8 +1,8 @@
 const { EntitySchema } = require('typeorm');
 
 module.exports = new EntitySchema({
-  name: 'Course',
-  tableName: 'COURSE',
+  name: 'CreditPurchase',
+  tableName: 'CREDIT_PURCHASE',
   columns: {
     id: {
       primary: true,
@@ -14,44 +14,31 @@ module.exports = new EntitySchema({
       type: 'uuid',
       nullable: false,
     },
-    skill_id: {
+    credit_package_id: {
       type: 'uuid',
       nullable: false,
     },
-    name: {
-      type: 'varchar',
-      length: 100,
-      nullable: false,
-    },
-    description: {
-      type: 'text',
-      nullable: false,
-    },
-    start_at: {
-      type: 'timestamptz',
-      nullable: false,
-    },
-    end_at: {
-      type: 'timestamptz',
-      nullable: false,
-    },
-    max_participants: {
+    purchased_credits: {
       type: 'integer',
       nullable: false,
     },
-    meeting_url: {
-      type: 'varchar',
-      length: 2048,
-      nullable: true,
+    price_paid: {
+      type: 'numeric',
+      precision: 10,
+      scale: 2,
+      nullable: false,
+      transformer: {
+        to: (value) => parseFloat(value),
+        from: (value) => (value % 1 === 0 ? parseInt(value) : parseFloat(value)), // 若數字為整數則去除小數部分
+      },
     },
     created_at: {
       type: 'timestamptz',
       createDate: true,
       nullable: false,
     },
-    updated_at: {
+    purchase_at: {
       type: 'timestamptz',
-      updateDate: true,
       nullable: false,
     },
   },
@@ -62,16 +49,16 @@ module.exports = new EntitySchema({
       joinColumn: {
         name: 'user_id',
         referencedColumnName: 'id',
-        foreignKeyConstraintName: 'course_user_id_fk',
+        foreignKeyConstraintName: 'credit_purchase_user_id_fk',
       },
     },
-    Skill: {
-      target: 'Skill',
+    CreditPackage: {
+      target: 'CreditPackage',
       type: 'many-to-one',
       joinColumn: {
-        name: 'skill_id',
+        name: 'credit_package_id',
         referencedColumnName: 'id',
-        foreignKeyConstraintName: 'course_skill_id_fk',
+        foreignKeyConstraintName: 'credit_purchase_credit_package_id_fk',
       },
     },
   },

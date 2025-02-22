@@ -1,8 +1,8 @@
 const { EntitySchema } = require('typeorm');
 
 module.exports = new EntitySchema({
-  name: 'Course',
-  tableName: 'COURSE',
+  name: 'CourseBooking',
+  tableName: 'COURSE_BOOKING',
   columns: {
     id: {
       primary: true,
@@ -14,44 +14,34 @@ module.exports = new EntitySchema({
       type: 'uuid',
       nullable: false,
     },
-    skill_id: {
+    course_id: {
       type: 'uuid',
       nullable: false,
     },
-    name: {
-      type: 'varchar',
-      length: 100,
-      nullable: false,
-    },
-    description: {
-      type: 'text',
-      nullable: false,
-    },
-    start_at: {
+    booking_at: {
       type: 'timestamptz',
       nullable: false,
     },
-    end_at: {
+    join_at: {
       type: 'timestamptz',
-      nullable: false,
+      nullable: true,
     },
-    max_participants: {
-      type: 'integer',
-      nullable: false,
+    leave_at: {
+      type: 'timestamptz',
+      nullable: true,
     },
-    meeting_url: {
+    cancelled_at: {
+      type: 'timestamptz',
+      nullable: true,
+    },
+    cancellation_reason: {
       type: 'varchar',
-      length: 2048,
+      length: 255,
       nullable: true,
     },
     created_at: {
       type: 'timestamptz',
       createDate: true,
-      nullable: false,
-    },
-    updated_at: {
-      type: 'timestamptz',
-      updateDate: true,
       nullable: false,
     },
   },
@@ -62,16 +52,16 @@ module.exports = new EntitySchema({
       joinColumn: {
         name: 'user_id',
         referencedColumnName: 'id',
-        foreignKeyConstraintName: 'course_user_id_fk',
+        foreignKeyConstraintName: 'course_booking_user_id_fk',
       },
     },
-    Skill: {
-      target: 'Skill',
+    Course: {
+      target: 'Course',
       type: 'many-to-one',
       joinColumn: {
-        name: 'skill_id',
+        name: 'course_id',
         referencedColumnName: 'id',
-        foreignKeyConstraintName: 'course_skill_id_fk',
+        foreignKeyConstraintName: 'course_booking_course_id_fk',
       },
     },
   },

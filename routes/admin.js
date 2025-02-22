@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const auth = require('../middleware/auth');
+const isCoach = require('../middleware/isCoach');
 const { dataSource } = require('../db/data-source');
 const logger = require('../utils/logger')('Admin');
 const {
@@ -9,6 +11,7 @@ const {
   isUUID,
   isValidDateString,
 } = require('../utils/valueChecks');
+const generateError = require('../utils/generateError');
 
 const isNotValidCourseInput = (course) => {
   return (
@@ -23,7 +26,7 @@ const isNotValidCourseInput = (course) => {
   );
 };
 
-router.post('/coaches/courses', async (req, res, next) => {
+router.post('/coaches/courses', auth, isCoach, async (req, res, next) => {
   try {
     const {
       user_id,
@@ -48,10 +51,7 @@ router.post('/coaches/courses', async (req, res, next) => {
     };
 
     if (!isUUID(user_id) || isNotValidCourseInput(newCourse)) {
-      res.status(400).send({
-        status: 'failed',
-        message: '欄位未填寫正確',
-      });
+      next(generateError(400, '欄位未填寫正確'));
       return;
     }
 
@@ -62,27 +62,18 @@ router.post('/coaches/courses', async (req, res, next) => {
     // eslint-disable-next-line camelcase
     const existingUser = await userRepo.findOne({ select: ['role'], where: { id: user_id } });
     if (!existingUser) {
-      res.status(400).send({
-        status: 'failed',
-        message: '使用者不存在',
-      });
+      next(generateError(400, '使用者不存在'));
       return;
     }
     if (existingUser?.role !== 'COACH') {
-      res.status(400).send({
-        status: 'failed',
-        message: '使用者尚未成為教練',
-      });
+      next(generateError(400, '使用者尚未成為教練'));
       return;
     }
 
     // eslint-disable-next-line camelcase
     const existingSkill = await skillRepo.findOne({ where: { id: skill_id } });
     if (!existingSkill) {
-      res.status(400).send({
-        status: 'failed',
-        message: '專長不存在',
-      });
+      next(generateError(400, '專長不存在'));
       return;
     }
 
@@ -98,7 +89,7 @@ router.post('/coaches/courses', async (req, res, next) => {
   }
 });
 
-router.put('/coaches/courses/:courseId', async (req, res, next) => {
+router.put('/coaches/courses/:courseId', auth, isCoach, async (req, res, next) => {
   try {
     const { courseId } = req.params;
     const {
@@ -122,10 +113,7 @@ router.put('/coaches/courses/:courseId', async (req, res, next) => {
     };
 
     if (!isUUID(courseId) || isNotValidCourseInput(editCourse)) {
-      res.status(400).send({
-        status: 'failed',
-        message: '欄位未填寫正確',
-      });
+      next(generateError(400, '欄位未填寫正確'));
       return;
     }
 
@@ -134,29 +122,20 @@ router.put('/coaches/courses/:courseId', async (req, res, next) => {
 
     const existingCourse = await courseRepo.findOne({ where: { id: courseId } });
     if (!existingCourse) {
-      res.status(400).send({
-        status: 'failed',
-        message: '課程不存在',
-      });
+      next(generateError(400, '課程不存在'));
       return;
     }
 
     // eslint-disable-next-line camelcase
     const existingSkill = await skillRepo.findOne({ where: { id: skill_id } });
     if (!existingSkill) {
-      res.status(400).send({
-        status: 'failed',
-        message: '專長不存在',
-      });
+      next(generateError(400, '專長不存在'));
       return;
     }
 
     const updatedCourse = await courseRepo.update({ id: courseId }, { ...editCourse });
     if (updatedCourse.affected === 0) {
-      res.status(400).send({
-        status: 'failed',
-        message: '更新課程失敗',
-      });
+      next(generateError(400, '更新課程失敗'));
       return;
     }
 
@@ -172,7 +151,7 @@ router.put('/coaches/courses/:courseId', async (req, res, next) => {
   }
 });
 
-router.post('/coaches/:userId', async (req, res, next) => {
+router.post('/coaches/:userId', auth, async (req, res, next) => {
   try {
     const { userId } = req.params;
     const { experience_years, description, profile_image_url = null } = req.body;
@@ -184,10 +163,7 @@ router.post('/coaches/:userId', async (req, res, next) => {
       // eslint-disable-next-line camelcase
       (profile_image_url && !isValidUrl(profile_image_url))
     ) {
-      res.status(400).send({
-        status: 'failed',
-        message: '欄位未填寫正確',
-      });
+      next(generateError(400, '欄位未填寫正確'));
       return;
     }
 
@@ -196,26 +172,17 @@ router.post('/coaches/:userId', async (req, res, next) => {
 
     const existingUser = await userRepo.findOne({ where: { id: userId } });
     if (!existingUser) {
-      res.status(400).send({
-        status: 'failed',
-        message: '使用者不存在',
-      });
+      next(generateError(400, '使用者不存在'));
       return;
     }
     if (existingUser?.role === 'COACH') {
-      res.status(409).send({
-        status: 'failed',
-        message: '使用者已經是教練',
-      });
+      next(generateError(409, '使用者已經是教練'));
       return;
     }
 
     const updatedUser = await userRepo.update({ id: userId }, { role: 'COACH' });
     if (updatedUser.affected === 0) {
-      res.status(400).send({
-        status: 'failed',
-        message: '更新使用者失敗',
-      });
+      next(generateError(400, '更新使用者失敗'));
       return;
     }
 

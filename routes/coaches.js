@@ -3,6 +3,7 @@ const router = express.Router();
 const { dataSource } = require('../db/data-source');
 const logger = require('../utils/logger')('Skill');
 const { isValidString, isNaturalNumber, isUUID } = require('../utils/valueChecks');
+const generateError = require('../utils/generateError');
 
 router.get('/', async (req, res, next) => {
   try {
@@ -14,10 +15,7 @@ router.get('/', async (req, res, next) => {
       !isNaturalNumber(+per) ||
       !isNaturalNumber(+page)
     ) {
-      res.status(400).send({
-        status: 'failed',
-        message: '欄位未填寫正確',
-      });
+      next(generateError(400, '欄位未填寫正確'));
       return;
     }
 
@@ -50,10 +48,7 @@ router.get('/:coachId', async (req, res, next) => {
     const { coachId } = req.params;
 
     if (!isUUID(coachId)) {
-      res.status(400).send({
-        status: 'failed',
-        message: '欄位未填寫正確',
-      });
+      next(generateError(400, '欄位未填寫正確'));
       return;
     }
 
@@ -77,10 +72,7 @@ router.get('/:coachId', async (req, res, next) => {
     });
 
     if (!coach) {
-      res.status(400).send({
-        status: 'failed',
-        message: '找不到該教練',
-      });
+      next(generateError(400, '找不到該教練'));
       return;
     }
 
