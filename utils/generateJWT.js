@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const config = require('../config/index');
 
 /**
  * create JSON Web Token
@@ -11,8 +11,8 @@ require('dotenv').config();
 
 const generateJWT = (
   payload = {},
-  secret = process.env.JWT_SECRET,
-  option = { expiresIn: process.env.JWT_EXPIRES },
+  secret = config.get('secret.jwt.secret'),
+  option = { expiresIn: config.get('secret.jwt.expires') },
 ) => {
   return new Promise((resolve, reject) => {
     jwt.sign(payload, secret, option, (err, token) => {
