@@ -6,7 +6,7 @@ module.exports = {
     expires: JWT_EXPIRES,
   },
   firebase: {
-    credential: FIREBASE_CREDENTIAL,
+    credential: JSON.parse(FIREBASE_CREDENTIAL),
     storageBucket: FIREBASE_STORAGE_BUCKET,
   },
 };
