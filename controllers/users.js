@@ -1,9 +1,13 @@
 const bcrypt = require('bcrypt');
+const dayjs = require('dayjs');
+const utc = require('dayjs/plugin/utc');
 const { dataSource } = require('../db/data-source');
 const { isValidString } = require('../utils/valueChecks');
 const generateJWT = require('../utils/generateJWT');
 const generateError = require('../utils/generateError');
 const logger = require('../utils/logger')('Users');
+
+dayjs.extend(utc);
 
 const isValidUserName = (value) => {
   const namePattern = /^[\p{Script=Han}a-zA-Z]{2,10}$/u;
@@ -243,6 +247,95 @@ const UsersController = {
       res.status(200).send({
         status: 'success',
         data: { user: finalResult },
+      });
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
+
+  getPurchasedPackages: async (req, res, next) => {
+    try {
+      const { id: userId } = req.user;
+
+      const creditPurchaseRepo = dataSource.getRepository('CreditPurchase');
+      const purchasedPackages = await creditPurchaseRepo.find({
+        select: {
+          purchased_credits: true,
+          price_paid: true,
+          purchase_at: true,
+          CreditPackage: {
+            name: true,
+          },
+        },
+        where: { user_id: userId },
+        relations: ['CreditPackage'],
+      });
+
+      res.status(200).send({
+        status: 'success',
+        data: purchasedPackages.map((record) => ({
+          purchased_credits: record.purchased_credits,
+          price_paid: record.price_paid,
+          name: record.CreditPackage.name,
+          purchase_at: record.purchase_at,
+        })),
+      });
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
+
+  getBookedCourses: async (req, res, next) => {
+    try {
+      const { id: userId } = req.user;
+
+      const courseBookingRepo = dataSource.getRepository('CourseBooking');
+      const bookedCourseList = await courseBookingRepo
+        .createQueryBuilder('CourseBooking')
+        .where('CourseBooking.user_id = :userId', { userId })
+        .andWhere('CourseBooking.cancelled_at IS NULL')
+        .innerJoin('CourseBooking.Course', 'Course')
+        .innerJoin('Course.User', 'User')
+        .select([
+          'Course.name AS name',
+          'Course.id AS course_id',
+          'User.name AS coach_name',
+          'Course.start_at AS start_at',
+          'Course.end_at AS end_at',
+          'Course.meeting_url AS meeting_url',
+        ])
+        .getRawMany();
+
+      const usedCreditNum = bookedCourseList.length;
+
+      const creditPurchaseRepo = dataSource.getRepository('CreditPurchase');
+      const purchasedCreditNum = await creditPurchaseRepo.sum('purchased_credits', {
+        user_id: userId,
+      });
+
+      res.status(200).send({
+        status: 'success',
+        data: {
+          credit_remain: purchasedCreditNum - usedCreditNum,
+          credit_usage: usedCreditNum,
+          course_booking: bookedCourseList.map((course) => {
+            const currentUnix = dayjs.utc().unix();
+            const startAtUnix = dayjs.utc(course.start_at).unix();
+            const endAtUnix = dayjs.utc(course.end_at).unix();
+
+            let status = '';
+            if (currentUnix < startAtUnix) status = 'PENDING';
+            else if (currentUnix < endAtUnix) status = 'PROGRESS';
+            else status = 'COMPLETED';
+
+            return {
+              ...course,
+              status,
+            };
+          }),
+        },
       });
     } catch (error) {
       logger.error(error);

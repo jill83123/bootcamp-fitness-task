@@ -13,4 +13,8 @@ router.get('/profile', auth, UsersController.getProfile);
 
 router.put('/profile', auth, UsersController.putProfile);
 
+router.get('/credit-package', auth, UsersController.getPurchasedPackages);
+
+router.get('/courses', auth, UsersController.getBookedCourses);
+
 module.exports = router;
