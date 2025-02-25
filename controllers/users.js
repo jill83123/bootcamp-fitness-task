@@ -26,6 +26,8 @@ const failedMessageMap = {
   userNameRules: '使用者名稱不符合規則，最少 2 個字，最多 10 個字，不可包含任何特殊符號與空白',
 };
 
+const bcryptSalt = 12;
+
 const UsersController = {
   postSignup: async (req, res, next) => {
     try {
@@ -59,7 +61,7 @@ const UsersController = {
         return;
       }
 
-      const hashedPassword = await bcrypt.hash(password, 12);
+      const hashedPassword = await bcrypt.hash(password, bcryptSalt);
       const newUser = { name, email, password: hashedPassword, role: 'USER' };
       const savedUser = await userRepo.save(userRepo.create(newUser));
 
@@ -117,6 +119,69 @@ const UsersController = {
             name: existingUser.name,
           },
         },
+      });
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
+
+  putPassword: async (req, res, next) => {
+    try {
+      const { id: userId } = req.user;
+      const {
+        password,
+        new_password: newPassword,
+        confirm_new_password: confirmNewPassword,
+      } = req.body;
+
+      if (
+        !isValidString(password) ||
+        !isValidString(newPassword) ||
+        !isValidString(confirmNewPassword)
+      ) {
+        next(generateError(400, '欄位未填寫正確'));
+        return;
+      }
+
+      if (!isValidPassword(newPassword) || !isValidPassword(confirmNewPassword)) {
+        next(generateError(400, failedMessageMap.passwordRules));
+        return;
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        next(generateError(400, '新密碼與驗證新密碼不一致'));
+        return;
+      }
+
+      const userRepo = dataSource.getRepository('User');
+
+      const existingUser = await userRepo.findOne({
+        select: ['password'],
+        where: { id: userId },
+      });
+
+      const isAuth = await bcrypt.compare(password, existingUser.password);
+      if (!isAuth) {
+        next(generateError(400, '密碼輸入錯誤'));
+        return;
+      }
+
+      if (password === newPassword) {
+        next(generateError(400, '新密碼不能與舊密碼相同'));
+        return;
+      }
+
+      const hashedNewPassword = await bcrypt.hash(newPassword, bcryptSalt);
+      const updatedResult = await userRepo.update({ id: userId }, { password: hashedNewPassword });
+      if (updatedResult.affected === 0) {
+        next(generateError(400, '更新密碼失敗'));
+        return;
+      }
+
+      res.status(200).send({
+        status: 'success',
+        data: null,
       });
     } catch (error) {
       logger.error(error);
