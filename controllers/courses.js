@@ -47,7 +47,7 @@ const CoursesController = {
     }
   },
 
-  postCourseRegistration: async (req, res, next) => {
+  postCourseBooking: async (req, res, next) => {
     try {
       const { courseId } = req.params;
       const { id: userId } = req.user;
@@ -111,7 +111,7 @@ const CoursesController = {
     }
   },
 
-  deleteCourseRegistration: async (req, res, next) => {
+  deleteCourseBooking: async (req, res, next) => {
     try {
       const { courseId } = req.params;
       const { id: userId } = req.user;
