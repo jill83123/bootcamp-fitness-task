@@ -100,6 +100,58 @@ const CoachesController = {
       next(error);
     }
   },
+
+  getCoursesByCoach: async (req, res, next) => {
+    try {
+      const { coachId } = req.params;
+
+      if (!isUUID(coachId)) {
+        next(generateError(400, '欄位未填寫正確'));
+        return;
+      }
+
+      const coachRepo = dataSource.getRepository('Coach');
+      const coach = await coachRepo.findOne({ select: ['user_id'], where: { id: coachId } });
+
+      if (!coach) {
+        next(generateError(400, '找不到該教練'));
+        return;
+      }
+
+      const courseRepo = dataSource.getRepository('Course');
+      const courseList = await courseRepo.find({
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          start_at: true,
+          end_at: true,
+          max_participants: true,
+          User: { name: true },
+          Skill: { name: true },
+        },
+        where: { user_id: coach.user_id },
+        relations: ['User', 'Skill'],
+      });
+
+      res.status(200).send({
+        status: 'success',
+        data: courseList.map((course) => ({
+          id: course.id,
+          coach_name: course.User.name,
+          skill_name: course.Skill.name,
+          name: course.name,
+          description: course.description,
+          start_at: course.start_at,
+          end_at: course.end_at,
+          max_participants: course.max_participants,
+        })),
+      });
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
 };
 
 module.exports = CoachesController;

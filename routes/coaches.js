@@ -6,4 +6,6 @@ router.get('/', CoachesController.getCoachList);
 
 router.get('/:coachId', CoachesController.getCoachDetail);
 
+router.get('/:coachId/courses', CoachesController.getCoursesByCoach);
+
 module.exports = router;
