@@ -30,7 +30,7 @@ const failedMessageMap = {
   userNameRules: '使用者名稱不符合規則，最少 2 個字，最多 10 個字，不可包含任何特殊符號與空白',
 };
 
-const bcryptSalt = 12;
+const saltRounds = 12;
 
 const UsersController = {
   postSignup: async (req, res, next) => {
@@ -65,7 +65,7 @@ const UsersController = {
         return;
       }
 
-      const hashedPassword = await bcrypt.hash(password, bcryptSalt);
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
       const newUser = { name, email, password: hashedPassword, role: 'USER' };
       const savedUser = await userRepo.save(userRepo.create(newUser));
 
@@ -176,7 +176,7 @@ const UsersController = {
         return;
       }
 
-      const hashedNewPassword = await bcrypt.hash(newPassword, bcryptSalt);
+      const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
       const updatedResult = await userRepo.update({ id: userId }, { password: hashedNewPassword });
       if (updatedResult.affected === 0) {
         next(generateError(400, '更新密碼失敗'));
