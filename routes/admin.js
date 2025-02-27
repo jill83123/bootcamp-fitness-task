@@ -18,4 +18,6 @@ router.get('/coaches', auth, isCoach, AdminController.getCoachProfile);
 
 router.put('/coaches', auth, isCoach, AdminController.putCoachProfile);
 
+router.get('/coaches/revenue', auth, isCoach, AdminController.getCoachRevenue);
+
 module.exports = router;
