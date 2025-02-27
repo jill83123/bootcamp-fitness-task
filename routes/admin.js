@@ -14,4 +14,8 @@ router.get('/coaches/courses', auth, isCoach, AdminController.getMyCourseList);
 
 router.get('/coaches/courses/:courseId', auth, isCoach, AdminController.getMyCourseDetail);
 
+router.get('/coaches', auth, isCoach, AdminController.getCoachProfile);
+
+router.put('/coaches', auth, isCoach, AdminController.putCoachProfile);
+
 module.exports = router;

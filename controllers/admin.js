@@ -1,3 +1,4 @@
+const { In } = require('typeorm');
 const { dataSource } = require('../db/data-source');
 const {
   isValidString,
@@ -293,6 +294,106 @@ const AdminController = {
           start_at: course.start_at,
           end_at: course.end_at,
           max_participants: course.max_participants,
+        },
+      });
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
+
+  getCoachProfile: async (req, res, next) => {
+    const { id: userId } = req.user;
+
+    const coachRepo = dataSource.getRepository('Coach');
+    const coach = await coachRepo.findOne({
+      select: ['id', 'experience_years', 'description', 'profile_image_url'],
+      where: { user_id: userId },
+      relations: ['CoachLinkSkill'],
+    });
+
+    try {
+      res.status(200).send({
+        status: 'success',
+        data: {
+          id: coach.id,
+          experience_years: coach.experience_years,
+          description: coach.description,
+          profile_image_url: coach.profile_image_url,
+          skill_ids: coach.CoachLinkSkill.map((link) => link.skill_id),
+        },
+      });
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
+
+  putCoachProfile: async (req, res, next) => {
+    try {
+      const { id: userId } = req.user;
+      const {
+        experience_years: experienceYears,
+        description,
+        profile_image_url: profileImageUrl = null,
+        skill_ids: skillIds,
+      } = req.body;
+
+      if (
+        !isNaturalNumber(experienceYears) ||
+        !isValidString(description) ||
+        (profileImageUrl && !isValidUrl(profileImageUrl)) ||
+        !skillIds.every((skillId) => isUUID(skillId))
+      ) {
+        next(generateError(400, '欄位未填寫正確'));
+        return;
+      }
+
+      const coachRepo = dataSource.getRepository('Coach');
+      const skillRepo = dataSource.getRepository('Skill');
+      const coachLinkSkillRepo = dataSource.getRepository('CoachLinkSkill');
+
+      const existingSkillNum = await skillRepo.count({ where: { id: In(skillIds) } });
+      if (skillIds.length !== existingSkillNum) {
+        next(generateError(400, '專長不存在'));
+        return;
+      }
+
+      const coach = await coachRepo.findOne({
+        select: ['id', 'experience_years', 'description', 'profile_image_url'],
+        where: { user_id: userId },
+      });
+
+      if (
+        coach.experience_years !== experienceYears ||
+        coach.description !== description ||
+        coach.profile_image_url !== profileImageUrl
+      ) {
+        await coachRepo.update(
+          { user_id: userId },
+          { experience_years: experienceYears, description, profile_image_url: profileImageUrl },
+        );
+      }
+
+      await coachLinkSkillRepo.delete({ coach_id: coach.id });
+      await coachLinkSkillRepo.insert(
+        skillIds.map((skillId) => ({ skill_id: skillId, coach_id: coach.id })),
+      );
+
+      const newCoachData = await coachRepo.findOne({
+        select: ['id', 'experience_years', 'description', 'profile_image_url'],
+        where: { user_id: userId },
+        relations: ['CoachLinkSkill'],
+      });
+
+      res.status(200).send({
+        status: 'success',
+        data: {
+          id: newCoachData.id,
+          experience_years: newCoachData.experience_years,
+          description: newCoachData.description,
+          profile_image_url: newCoachData.profile_image_url,
+          skill_ids: newCoachData.CoachLinkSkill.map((link) => link.skill_id),
         },
       });
     } catch (error) {
