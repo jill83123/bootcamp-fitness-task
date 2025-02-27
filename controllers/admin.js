@@ -303,16 +303,16 @@ const AdminController = {
   },
 
   getCoachProfile: async (req, res, next) => {
-    const { id: userId } = req.user;
-
-    const coachRepo = dataSource.getRepository('Coach');
-    const coach = await coachRepo.findOne({
-      select: ['id', 'experience_years', 'description', 'profile_image_url'],
-      where: { user_id: userId },
-      relations: ['CoachLinkSkill'],
-    });
-
     try {
+      const { id: userId } = req.user;
+
+      const coachRepo = dataSource.getRepository('Coach');
+      const coach = await coachRepo.findOne({
+        select: ['id', 'experience_years', 'description', 'profile_image_url'],
+        where: { user_id: userId },
+        relations: ['CoachLinkSkill'],
+      });
+
       res.status(200).send({
         status: 'success',
         data: {
