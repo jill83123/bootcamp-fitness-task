@@ -201,6 +201,105 @@ const AdminController = {
       next(error);
     }
   },
+
+  getMyCourseList: async (req, res, next) => {
+    try {
+      const { id: userId } = req.user;
+
+      const courseRepo = dataSource.getRepository('Course');
+      const courseList = await courseRepo
+        .createQueryBuilder('Course')
+        .select(['id', 'name', 'start_at', 'end_at', 'max_participants'])
+        .where('user_id = :userId', { userId })
+        .addSelect((qb) => {
+          return qb
+            .select('COUNT(*) AS participants')
+            .from('CourseBooking')
+            .where('course_id = Course.id')
+            .andWhere('cancelled_at IS NULL');
+        })
+        .getRawMany();
+
+      const result = courseList.map((course) => {
+        const currentTime = new Date();
+        const startAt = course.start_at;
+        const endAt = course.end_at;
+
+        let status = '';
+        if (currentTime < startAt) status = '尚未開始';
+        else if (currentTime < endAt) status = '報名中';
+        else status = '已結束';
+
+        return {
+          id: course.id,
+          status,
+          name: course.name,
+          start_at: course.start_at,
+          end_at: course.end_at,
+          max_participants: course.max_participants,
+          participants: Number(course.participants),
+        };
+      });
+
+      res.status(200).send({
+        status: 'success',
+        data: result,
+      });
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
+
+  getMyCourseDetail: async (req, res, next) => {
+    try {
+      const { id: userId } = req.user;
+      const { courseId } = req.params;
+
+      if (!isUUID(courseId)) {
+        next(generateError(400, '欄位未填寫正確'));
+        return;
+      }
+
+      const courseRepo = dataSource.getRepository('Course');
+      const course = await courseRepo.findOne({
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          start_at: true,
+          end_at: true,
+          max_participants: true,
+          Skill: {
+            name: true,
+          },
+        },
+        where: { id: courseId, user_id: userId },
+        relations: ['Skill'],
+      });
+
+      if (!course) {
+        next(generateError(400, '課程不存在'));
+        return;
+      }
+
+      res.status(200).send({
+        status: 'success',
+        data: {
+          id: course.id,
+          skill_name: course.Skill.name,
+          name: course.name,
+          description: course.description,
+          start_at: course.start_at,
+          end_at: course.end_at,
+          max_participants: course.max_participants,
+        },
+      });
+    } catch (error) {
+      logger.error(error);
+      next(error);
+    }
+  },
 };
 
 module.exports = AdminController;

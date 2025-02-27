@@ -10,4 +10,8 @@ router.put('/coaches/courses/:courseId', auth, isCoach, AdminController.putCoach
 
 router.post('/coaches/:userId', auth, AdminController.postCoach);
 
+router.get('/coaches/courses', auth, isCoach, AdminController.getMyCourseList);
+
+router.get('/coaches/courses/:courseId', auth, isCoach, AdminController.getMyCourseDetail);
+
 module.exports = router;
