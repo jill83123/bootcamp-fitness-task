@@ -10,9 +10,9 @@ router.put('/coaches/courses/:courseId', auth, isCoach, AdminController.putCoach
 
 router.post('/coaches/:userId', auth, AdminController.postCoach);
 
-router.get('/coaches/courses', auth, isCoach, AdminController.getMyCourseList);
+router.get('/coaches/courses', auth, isCoach, AdminController.getCoachCourseList);
 
-router.get('/coaches/courses/:courseId', auth, isCoach, AdminController.getMyCourseDetail);
+router.get('/coaches/courses/:courseId', auth, isCoach, AdminController.getCoachCourseDetail);
 
 router.get('/coaches', auth, isCoach, AdminController.getCoachProfile);
 

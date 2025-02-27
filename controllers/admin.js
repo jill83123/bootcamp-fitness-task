@@ -203,7 +203,7 @@ const AdminController = {
     }
   },
 
-  getMyCourseList: async (req, res, next) => {
+  getCoachCourseList: async (req, res, next) => {
     try {
       const { id: userId } = req.user;
 
@@ -252,7 +252,7 @@ const AdminController = {
     }
   },
 
-  getMyCourseDetail: async (req, res, next) => {
+  getCoachCourseDetail: async (req, res, next) => {
     try {
       const { id: userId } = req.user;
       const { courseId } = req.params;
