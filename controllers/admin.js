@@ -448,6 +448,20 @@ const AdminController = {
         .getRawMany();
       const courseIds = courseList.map((course) => course.id);
 
+      if (courseIds.length === 0) {
+        res.status(200).send({
+          status: 'success',
+          data: {
+            total: {
+              participants: 0,
+              revenue: 0,
+              course_count: 0,
+            },
+          },
+        });
+        return;
+      }
+
       const participants = await courseBookingRepo
         .createQueryBuilder('CourseBooking')
         .where('course_id IN (:...courseIds)', { courseIds })
