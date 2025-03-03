@@ -141,7 +141,7 @@ const AdminController = {
         return;
       }
 
-      const course = await courseRepo.findOne({ where: { id: updatedCourse.id } });
+      const course = await courseRepo.findOne({ where: { id: courseId } });
 
       res.status(200).send({
         status: 'success',
